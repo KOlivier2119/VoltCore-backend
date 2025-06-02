@@ -1,5 +1,6 @@
 package com.voltcore.bank.controllers;
 
+import com.voltcore.bank.config.JwtService;
 import com.voltcore.bank.dtos.UserDTO;
 import com.voltcore.bank.services.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,10 +12,9 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.security.Principal;
 
 /**
  * REST Controller for handling authentication operations with Swagger documentation.
@@ -25,10 +25,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
     private final AuthService authService;
     private final AuthenticationManager authenticationManager;
+    private final JwtService jwtService;
 
-    public AuthController(AuthService authService, AuthenticationManager authenticationManager) {
+    public AuthController(AuthService authService, AuthenticationManager authenticationManager, JwtService jwtService) {
         this.authService = authService;
         this.authenticationManager = authenticationManager;
+        this.jwtService = jwtService;
     }
 
     @PostMapping("/register")
@@ -42,26 +44,66 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    @Operation(summary = "User login", description = "Authenticates a user with username and password, returning user details.")
+    @Operation(summary = "User login", description = "Authenticates a user with username and password, returning a JWT and user details.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Login successful"),
             @ApiResponse(responseCode = "401", description = "Invalid username or password")
     })
-    public ResponseEntity<UserDTO> login(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest loginRequest) {
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword())
             );
+            String token = jwtService.generateToken(authentication);
             UserDTO userDTO = new UserDTO();
             userDTO.setUsername(authentication.getName());
             userDTO.setRole(authentication.getAuthorities().stream()
                     .findFirst()
                     .map(auth -> auth.getAuthority().replace("ROLE_", ""))
                     .orElse("USER"));
-            return ResponseEntity.ok(userDTO);
+            return ResponseEntity.ok(new AuthResponse(token, userDTO));
         } catch (AuthenticationException e) {
             return ResponseEntity.status(401).body(null);
         }
+    }
+
+    @GetMapping("/me")
+    @Operation(summary = "Get current user", description = "Returns details of the currently authenticated user.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "User details retrieved successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    public ResponseEntity<UserDTO> getCurrentUser(Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(null);
+        }
+        UserDTO userDTO = new UserDTO();
+        userDTO.setUsername(principal.getName());
+        userDTO.setRole(authenticationManager.authenticate(
+                        new UsernamePasswordAuthenticationToken(principal.getName(), null)
+                ).getAuthorities().stream()
+                .findFirst()
+                .map(auth -> auth.getAuthority().replace("ROLE_", ""))
+                .orElse("USER"));
+        return ResponseEntity.ok(userDTO);
+    }
+
+    /**
+     * Response body for login endpoint.
+     */
+    private static class AuthResponse {
+        private String token;
+        private UserDTO user;
+
+        public AuthResponse(String token, UserDTO user) {
+            this.token = token;
+            this.user = user;
+        }
+
+        public String getToken() { return token; }
+        public void setToken(String token) { this.token = token; }
+        public UserDTO getUser() { return user; }
+        public void setUser(UserDTO user) { this.user = user; }
     }
 
     /**
@@ -71,20 +113,9 @@ public class AuthController {
         private String username;
         private String password;
 
-        public String getUsername() {
-            return username;
-        }
-
-        public void setUsername(String username) {
-            this.username = username;
-        }
-
-        public String getPassword() {
-            return password;
-        }
-
-        public void setPassword(String password) {
-            this.password = password;
-        }
+        public String getUsername() { return username; }
+        public void setUsername(String username) { this.username = username; }
+        public String getPassword() { return password; }
+        public void setPassword(String password) { this.password = password; }
     }
 }
