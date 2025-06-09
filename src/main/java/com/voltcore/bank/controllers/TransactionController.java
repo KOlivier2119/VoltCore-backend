@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -23,6 +24,41 @@ public class TransactionController {
 
     public TransactionController(AccountService accountService) {
         this.accountService = accountService;
+    }
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Get all transactions", description = "Retrieves all transactions in the system. Admin only.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Transactions retrieved successfully"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
+    public ResponseEntity<List<TransactionDTO>> getAllTransactions() {
+        return ResponseEntity.ok(accountService.getAllTransactions());
+    }
+
+    @PostMapping
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    @Operation(summary = "Create a transaction", description = "Creates a new transaction (deposit, withdrawal, or transfer). Accessible to Users and Admins.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Transaction created successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid transaction data"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
+    public ResponseEntity<TransactionDTO> createTransaction(@RequestBody TransactionDTO transactionDTO) {
+        return ResponseEntity.ok(accountService.createTransaction(transactionDTO));
+    }
+
+    @PutMapping("/{transactionId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Update a transaction", description = "Updates an existing transaction (deposit or withdrawal only). Admin only.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Transaction updated successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid transaction data or transaction not found"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
+    public ResponseEntity<TransactionDTO> updateTransaction(@PathVariable Long transactionId, @RequestBody TransactionDTO transactionDTO) {
+        return ResponseEntity.ok(accountService.updateTransaction(transactionId, transactionDTO));
     }
 
     @PostMapping("/{transactionId}/reverse")
@@ -71,5 +107,33 @@ public class TransactionController {
     public ResponseEntity<Void> deleteTransaction(@PathVariable Long transactionId) {
         accountService.deleteTransaction(transactionId);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/type/{transactionType}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Get transactions by type", description = "Retrieves all transactions of a specific type (e.g., DEPOSIT, WITHDRAWAL). Admin only.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Transactions retrieved successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid transaction type"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
+    public ResponseEntity<List<TransactionDTO>> getTransactionsByType(@PathVariable String transactionType) {
+        return ResponseEntity.ok(accountService.getTransactionsByType(transactionType));
+    }
+
+    @GetMapping("/date-range")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Get transactions by date range", description = "Retrieves all transactions within a specified date range. Admin only.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Transactions retrieved successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid date range"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
+    public ResponseEntity<List<TransactionDTO>> getTransactionsByDateRange(
+            @RequestParam("startDate") String startDate,
+            @RequestParam("endDate") String endDate) {
+        LocalDateTime start = LocalDateTime.parse(startDate);
+        LocalDateTime end = LocalDateTime.parse(endDate);
+        return ResponseEntity.ok(accountService.getTransactionsByDateRange(start, end));
     }
 }

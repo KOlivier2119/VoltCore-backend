@@ -7,6 +7,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -91,6 +93,8 @@ public class AuthController {
     /**
      * Response body for login endpoint.
      */
+    @Setter
+    @Getter
     private static class AuthResponse {
         private String token;
         private UserDTO user;
@@ -100,22 +104,16 @@ public class AuthController {
             this.user = user;
         }
 
-        public String getToken() { return token; }
-        public void setToken(String token) { this.token = token; }
-        public UserDTO getUser() { return user; }
-        public void setUser(UserDTO user) { this.user = user; }
     }
 
     /**
      * Request body for login endpoint.
      */
+    @Setter
+    @Getter
     private static class LoginRequest {
         private String username;
         private String password;
 
-        public String getUsername() { return username; }
-        public void setUsername(String username) { this.username = username; }
-        public String getPassword() { return password; }
-        public void setPassword(String password) { this.password = password; }
     }
 }

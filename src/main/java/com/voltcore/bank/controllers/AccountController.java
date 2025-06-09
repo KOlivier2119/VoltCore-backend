@@ -27,6 +27,17 @@ public class AccountController {
         this.accountService = accountService;
     }
 
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Get all accounts", description = "Retrieves all accounts in the system. Admin only.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Accounts retrieved successfully"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
+    public ResponseEntity<List<AccountDTO>> getAllAccounts() {
+        return ResponseEntity.ok(accountService.getAllAccounts());
+    }
+
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Create a new account", description = "Creates a new bank account with a unique account number. Admin only.")
